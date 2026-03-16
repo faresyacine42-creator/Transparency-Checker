@@ -7,8 +7,6 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 // ── Request Queue ─────────────────────────────────────────────
-// Prevents multiple Puppeteer instances running simultaneously
-// which would crash Railway's 512MB RAM limit
 let isProcessing = false;
 const queue = [];
 
@@ -59,7 +57,7 @@ async function runPuppeteer(cleanDomain) {
   let browser;
   try {
     browser = await puppeteer.launch({
-      headless: 'new',
+      headless: true,                                          // ✅ FIX 1: ganti 'new' → true (lebih stabil di Railway)
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: [
         '--no-sandbox',
@@ -67,7 +65,7 @@ async function runPuppeteer(cleanDomain) {
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
-        '--no-zygote',
+        '--no-zygote',                                        // ✅ TETAP: dibutuhkan di container
         '--disable-gpu',
         '--disable-extensions',
         '--disable-background-networking',
@@ -77,9 +75,9 @@ async function runPuppeteer(cleanDomain) {
         '--hide-scrollbars',
         '--mute-audio',
         '--safebrowsing-disable-auto-update',
-        '--single-process',
+        // ❌ DIHAPUS: '--single-process' → ini penyebab crash "pthread_create" error
         '--memory-pressure-off',
-        '--js-flags=--max-old-space-size=256'
+        '--js-flags=--max-old-space-size=512'                 // ✅ FIX 2: naik dari 256 → 512 (Hobby plan punya 8GB RAM)
       ]
     });
 
