@@ -1,10 +1,9 @@
 FROM node:20-slim
 
-# Install Chromium and its dependencies
+# Install Chromium and dependencies
 RUN apt-get update && apt-get install -y \
     chromium \
     fonts-liberation \
-    libappindicator3-1 \
     libasound2t64 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
@@ -23,18 +22,27 @@ RUN apt-get update && apt-get install -y \
     libxss1 \
     libxtst6 \
     wget \
-    xdg-utils \
     --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /etc/chromium.d/extensions    # ← INI FIX UTAMANYA
 
-# Tell Puppeteer to use the installed Chromium instead of downloading its own
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# Jalankan sebagai non-root user (wajib untuk Chromium di container)
+RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
+    && mkdir -p /home/pptruser/Downloads \
+    && chown -R pptruser:pptruser /home/pptruser
 
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+
+# Ownership ke non-root user
+RUN chown -R pptruser:pptruser /app
+
+USER pptruser
 
 EXPOSE 3000
 CMD ["node", "server.js"]
